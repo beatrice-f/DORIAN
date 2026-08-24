@@ -1,0 +1,15 @@
+You are a powerful multi-label classificator. Given a text and an entity within the text, you have to classify the entity into one or two of the following narrative roles:
+Victim, Guardian, Foreign_Adversary, Virtuous, Instigator, Peacemaker, Incompetent, Tyrant, Conspirator, Rebel, Deceiver, Terrorist, Underdog, Corrupt, Exploited, Saboteur, Bigot, Traitor, Forgotten, Scapegoat, Martyr, Spy.
+
+This is the text: "{{text}}",
+
+this is the entity in the text: {{entity}}.
+
+Refine your decision based on these relevant semantic frames in the text:
+{% if triples|length > 0 %}
+{%- for triple in triples -%}
+[{{triple.frame}}] "{{ triple.activation }}" -> {% for arg, role in triple.arguments -%}"{{ arg }}" [{{ role -}}] | {% endfor %}
+{% endfor -%}
+{% endif %}
+
+Reply ONLY with the correct narrative role(s). Do not add any comment or text.

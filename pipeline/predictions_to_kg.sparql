@@ -1,0 +1,162 @@
+PREFIX  xyz:  <http://sparql.xyz/facade-x/data/>
+PREFIX  rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX  fx:   <http://sparql.xyz/facade-x/ns/>
+
+PREFIX  rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX provo: <https://www.w3.org/TR/prov-o/>
+
+PREFIX dul: <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#>
+PREFIX  data:   <http://w3id.org/doris/data/>
+PREFIX  :   <http://w3id.org/doris/schema/>
+
+CONSTRUCT
+{
+    GRAPH ?docIRI {
+        ########## GROUNDING LAYER ##########
+        # create the grounded entity
+        # ?entityIRI a dul:Entity .
+        data:LOME a dul:Agent ;
+                    rdfs:label "LOME" .
+
+        # # create the collection of situations and add the current situation
+        # ?encodingCollectionIRI a :EncodingCollection ;
+        #     :encodesEntity ?entityIRI ;
+        #     :hasEncodingMode data:LanguageMode ;
+        #     dul:hasMember ?documentEncodingIRI .
+
+        ########## ENCODING LAYER ##########
+        # define the situation encoder -- LOME
+        ?lomeIRI a :SituationEncoder ;
+            dul:hasAgent data:LOME .
+
+        # define the encoding of the whole document
+        ?documentRealizationIRI a dul:Entity ;
+            provo:wasGeneratedBy ?source ;
+            rdfs:label ?documentText .
+
+        ?documentEncodingIRI a :EntityEncoding ;
+            :hasRealization ?documentRealizationIRI .
+
+        ?documentSituationEncodingIRI a :SituationEncoding ;
+            :hasEncoder ?lomeIRI ;
+            :encodes ?documentEncodingIRI .
+
+        # define the encoding through the frame activation
+        ?activationRealizationIRI a dul:Entity ;
+            provo:wasGeneratedBy ?source ;
+            rdfs:label ?frameActivation .
+
+        ?activationEncodingIRI a :EntityEncoding ;
+            :hasRealization ?activationRealizationIRI .
+
+        ?activationSituationEncodingIRI a :SituationEncoding ;
+            :hasEncoder ?lomeIRI ;
+            :encodes ?activationEncodingIRI .
+
+        # define the encoding due to the activation
+        ?spanEntityIRI a dul:Entity ;
+            rdfs:label ?entity .
+
+        ?spanRealizationIRI a dul:Entity ;
+            provo:wasGeneratedBy ?source ;
+            rdfs:label ?spanText .
+
+        ?spanEncodingIRI a :EntityEncoding ;
+            :hasRealization ?spanRealizationIRI ;
+            :hasEntity ?spanEntityIRI .
+
+        ?spanSituationEncodingIRI a :SituationEncoding ;
+            :hasEncoder ?lomeIRI ;
+            :encodes ?spanEncodingIRI .
+
+        # connect all the situation parts
+        ?documentSituationEncodingIRI dul:hasPart ?activationSituationEncodingIRI .
+        ?activationSituationEncodingIRI dul:hasPart ?spanSituationEncodingIRI .
+
+        ########## DECODING LAYER ##########
+        # define the decoding of the entity that activate the frame
+        ?activationSituationDecodingIRI a :SituationDecoding ;
+            :decodedAs ?frameIRI ;
+            :decodes ?activationEncodingIRI ;
+            :hasDecoder ?lomeIRI .
+
+        # define the decoding of the span
+        ?spanSituationDecodingIRI a :SituationDecoding ;
+            :decodedAs ?roleIRI ;
+            :decodes ?spanEncodingIRI ;
+            :hasDecoder ?lomeIRI .
+
+        ?activationSituationDecodingIRI dul:hasPart ?spanSituationDecodingIRI .
+
+        # connect situation encodings and decodings
+        ?activationSituationEncodingIRI :hasDecoding ?activationSituationDecodingIRI .
+        ?activationSituationDecodingIRI :isDecodingOf ?activationSituationEncodingIRI .
+
+        ?spanSituationEncodingIRI :hasDecoding ?spanSituationDecodingIRI .
+        ?spanSituationDecodingIRI :isDecodingOf ?spanSituationEncodingIRI .
+    }
+}
+WHERE
+{
+  SERVICE <x-sparql-anything:>
+  {
+    fx:properties fx:location ?_input .
+
+    # mince IRI for document
+    BIND(
+        IF(CONTAINS(?_input, "/"),
+           fx:String.substring(?_input, fx:String.lastIndexOf(?_input, "/") + 1),
+           ?_input
+        ) AS ?docName
+    )
+    BIND(IRI(CONCAT(STR(data:), ?docName)) AS ?docIRI)
+
+    # extract the annotation
+    ?root a fx:root ;
+          xyz:sentence ?documentText ; # extract the textual content
+          xyz:frames ?framePredictions . # extract the annotated frames
+
+    # mince the IRI for the grounded entity
+    BIND(IRI(CONCAT(STR(data:), STR(?input))) AS ?entityIRI)
+    # mince the IRI for the collection of situation wrt this entity
+    BIND(IRI(CONCAT(STR(?entityIRI), "/encodings")) AS ?encodingCollectionIRI)
+
+    # extract the encoding layer
+    # mince the IRI of this situation
+    BIND(IRI(CONCAT(STR(data:), STRUUID())) AS ?lomeIRI)
+
+    BIND(IRI(CONCAT(STR(data:), STRUUID())) AS ?documentEncodingIRI)
+    BIND(IRI(CONCAT(STR(data:), STRUUID())) AS ?documentSituationEncodingIRI)
+    BIND(IRI(CONCAT(STR(data:), STRUUID())) AS ?documentRealizationIRI)
+
+    # loop through each predicted element
+    ?framePredictions fx:anySlot ?prediction .
+
+    # extract the predictions
+    # activation
+    ?prediction xyz:activation ?frameActivation ; # extract the span activating a frame
+        		xyz:name ?frameName . # extract the activated frame
+
+    # align the activated frame to Framester
+    BIND(IRI(CONCAT("https://w3id.org/framester/framenet/abox/frame/", ?frameName)) as ?frameIRI)
+
+    BIND(IRI(CONCAT(STR(data:), STRUUID())) AS ?activationEncodingIRI)
+    BIND(IRI(CONCAT(STR(data:), STRUUID())) AS ?activationSituationEncodingIRI)
+    BIND(IRI(CONCAT(STR(data:), STRUUID())) AS ?activationRealizationIRI)
+    BIND(IRI(CONCAT(STR(data:), STRUUID())) AS ?activationSituationDecodingIRI)
+
+    # roles
+    ?prediction xyz:roles/fx:anySlot ?span . # extract each annotated span
+    ?span xyz:filler ?spanText ; # extract the actual superficial mention of the span
+        xyz:name ?spanRole . # extract the role predicted
+
+    # align the role to Framester
+    BIND(IRI(CONCAT("https://w3id.org/framester/framenet/abox/fe/", ?spanRole, ".", LCASE(?frameName))) as ?roleIRI)
+
+    BIND(IRI(CONCAT(STR(data:), ?entity_id)) AS ?spanEntityIRI)
+    BIND(IRI(CONCAT(STR(data:), STRUUID())) AS ?spanEncodingIRI)
+    BIND(IRI(CONCAT(STR(data:), STRUUID())) AS ?spanSituationEncodingIRI)
+    BIND(IRI(CONCAT(STR(data:), STRUUID())) AS ?spanRealizationIRI)
+    BIND(IRI(CONCAT(STR(data:), STRUUID())) AS ?spanSituationDecodingIRI)
+  }
+}

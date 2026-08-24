@@ -1,0 +1,36 @@
+PREFIX  rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX  rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX  dul: <http://www.ontologydesignpatterns.org/ont/dul/DUL.owl#>
+PREFIX  data:   <http://w3id.org/doris/data/>
+PREFIX  :   <http://w3id.org/doris/schema/>
+PREFIX  fstbox: <https://w3id.org/framester/framenet/tbox/>
+
+SELECT ?eventId ?eventFrame ?frameActivation ?argument ?argumentRole WHERE {
+    GRAPH <http://w3id.org/doris/data/{{source}}.json> {
+      {
+        SELECT ?eventId WHERE {
+            ?eventId a :SituationEncoding ;
+                dul:hasPart ?encodedPart .
+            ?encodedPart :encodes [
+                :hasRealization [ rdfs:label ?entityLabel ]
+            ] .
+        }
+      }
+
+      ?eventId dul:hasPart ?encodedPart ;
+                         :encodes [
+        					:hasRealization [ rdfs:label ?frameActivation ]
+   	  					] ;
+                         :hasDecoding [ :decodedAs ?feFrame ] .
+
+      ?encodedPart :encodes [
+        	:hasRealization [ rdfs:label ?argument ]
+   	  	] ;
+    	:hasDecoding [ :decodedAs ?fsRole ] .
+  	}
+
+    SERVICE <http://etna.istc.cnr.it/framester2/sparql> {
+        ?feFrame fstbox:frame_name ?eventFrame .
+        ?fsRole fstbox:FE_name ?argumentRole .
+    }
+}

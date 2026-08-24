@@ -1,0 +1,28 @@
+[project]
+name = "dorian"
+version = "0.1.0"
+description = "DORIS-augmented Analysis of Narratives — KG-enhanced entity framing analysis with LLMs"
+readme = "README.md"
+license = { text = "CC0-1.0" }
+requires-python = ">=3.10"
+dependencies = [
+    "jinja2",
+    "sparqlwrapper",
+    "litellm",
+    "tqdm",
+    "pandas",
+    "numpy",
+    "scipy",
+    "scikit-learn",
+    "rdflib",
+]
+
+[project.optional-dependencies]
+notebooks = [
+    "jupyter",
+    "matplotlib",
+    "ollama",
+]
+
+[tool.setuptools.packages.find]
+include = ["dorian*"]

@@ -1,0 +1,25 @@
+# third-party binaries (see pipeline/README.md for download links)
+apache*
+*.jar
+
+# regenerated pipeline data (see pipeline/README.md and README.md to rebuild)
+/data/dev/
+/data/train/
+/data/dev-labels/
+/data/*.zip
+/data/dev_subtask1*.json
+/data/train_subtask1.json
+/frames/
+/kg/
+/kg.tsv
+/data_coref/
+/tdb_kg/
+/run/
+
+# regenerated experiment outputs (see llm_experiments/, analysis/)
+/results/predictions/
+/results/predictions_normalized/
+
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
